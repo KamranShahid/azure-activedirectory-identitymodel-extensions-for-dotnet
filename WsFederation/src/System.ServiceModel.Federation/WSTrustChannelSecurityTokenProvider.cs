@@ -14,6 +14,7 @@ using System.Text;
 using System.Xml;
 using Microsoft.IdentityModel.Protocols.WsAddressing;
 using Microsoft.IdentityModel.Protocols.WsPolicy;
+using Microsoft.IdentityModel.Protocols.WsSecurity;
 using Microsoft.IdentityModel.Protocols.WsTrust;
 using Microsoft.IdentityModel.Tokens.Saml2;
 
@@ -47,8 +48,12 @@ namespace System.ServiceModel.Federation
             {
                 AppliesTo = new AppliesTo(new EndpointReference(target.Uri.OriginalString)),
                 Context = Guid.NewGuid().ToString(),
-                // hard coded, as WCF does not support Bearer right now.
-                KeyType = WsTrustKeyTypes.Trust13.Bearer,
+                KeyType = issuedTokenParameters.KeyType == SecurityKeyType.AsymmetricKey
+                                                        ? WsTrustKeyTypes.Trust13.PublicKey
+                                                        : issuedTokenParameters.KeyType == SecurityKeyType.SymmetricKey
+                                                        ? WsTrustKeyTypes.Trust13.Symmetric
+                                                        : WsTrustKeyTypes.Trust13.Bearer,
+                //ProofEncryption = new Microsoft.IdentityModel.Xml.SecurityTokenElement()
                 RequestType = WsTrustConstants.Trust13.WsTrustActions.Issue,
                 TokenType = SecurityTokenRequirement.TokenType
             };
@@ -78,9 +83,10 @@ namespace System.ServiceModel.Federation
             // Assumes that token is first and Saml2SecurityToken.
             using (var stream = new MemoryStream())
             {
+                var response = trustResponse.RequestSecurityTokenResponseCollection[0];
                 var writer = XmlDictionaryWriter.CreateTextWriter(stream, Encoding.UTF8, false);
                 var tokenHandler = new Saml2SecurityTokenHandler();
-                tokenHandler.TryWriteSourceData(writer, trustResponse.RequestSecurityTokenResponseCollection[0].RequestedSecurityToken.SecurityToken);
+                tokenHandler.TryWriteSourceData(writer, response.RequestedSecurityToken.SecurityToken);
                 writer.Flush();
                 stream.Seek(0, SeekOrigin.Begin);
                 var dom = new XmlDocument
@@ -88,14 +94,27 @@ namespace System.ServiceModel.Federation
                     PreserveWhitespace = true
                 };
 
+                BinarySecretSecurityToken proofToken = null;
+                if (trustResponse.RequestSecurityTokenResponseCollection[0].RequestedProofToken != null)
+                    proofToken = new BinarySecretSecurityToken(trustResponse.RequestSecurityTokenResponseCollection[0].RequestedProofToken.BinarySecret.Data);
+
+                WsSecuritySerializer wsSecuritySerializer = new WsSecuritySerializer();
+                SecurityTokenReference securityTokenReference = new SecurityTokenReference
+                {
+                    Id = response.AttachedReference.KeyIdentifier.Value,
+                    TokenType = response.AttachedReference.TokenType
+                };
+
+                var element = WsSecuritySerializer.GetXmlElement(securityTokenReference, WsTrustVersion.Trust13);
                 dom.Load(new XmlTextReader(stream) { DtdProcessing = DtdProcessing.Prohibit });
+                GenericXmlSecurityKeyIdentifierClause securityKeyIdentifierClause = new GenericXmlSecurityKeyIdentifierClause(element);
                 return new GenericXmlSecurityToken(dom.DocumentElement,
-                                                    null,
-                                                    DateTime.UtcNow,
-                                                    DateTime.UtcNow + TimeSpan.FromDays(1),
-                                                    new Saml2AssertionKeyIdentifierClause(trustResponse.RequestSecurityTokenResponseCollection[0].AttachedReference.Id),
-                                                    new Saml2AssertionKeyIdentifierClause(trustResponse.RequestSecurityTokenResponseCollection[0].UnattachedReference.Id),
-                                                    null);
+                                                   proofToken,
+                                                   DateTime.UtcNow,
+                                                   DateTime.UtcNow + TimeSpan.FromDays(1),
+                                                   securityKeyIdentifierClause,
+                                                   securityKeyIdentifierClause,
+                                                   null);
             }
         }
     }

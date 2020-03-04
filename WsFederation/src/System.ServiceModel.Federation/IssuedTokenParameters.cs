@@ -10,6 +10,7 @@ using System.ServiceModel.Security.Tokens;
 using System.Xml;
 using Microsoft.IdentityModel.Protocols.WsFed;
 using Microsoft.IdentityModel.Protocols.WsTrust;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Tokens.Saml2;
 
 namespace System.ServiceModel.Federation
@@ -73,10 +74,10 @@ namespace System.ServiceModel.Federation
             get => _keyType;
             set => _keyType = (string.IsNullOrEmpty(value))
                             ? throw new ArgumentNullException(nameof(KeyType))
-                            : (value.Equals(WsTrustKeyTypes.Trust13.Bearer))
-                                ? value
-                                : throw new NotSupportedException($"Only {WsTrustKeyTypes.Trust13.Bearer} are supported, keyType was '{value}'.");
+                            : value;
         }
+
+        public SecurityKey SecurityKey { get; set; }
 
         public string TokenType
         {

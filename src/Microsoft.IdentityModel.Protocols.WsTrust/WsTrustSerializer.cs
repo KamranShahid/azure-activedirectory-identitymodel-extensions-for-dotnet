@@ -659,6 +659,13 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
 
             writer.WriteEndElement();
         }
+        public void WriteProofEncryptionKey(XmlDictionaryWriter writer, WsSerializationContext serializationContext, SecurityKey proofEncryptionKey)
+        {
+            WsUtils.ValidateParamsForWritting(writer, serializationContext, proofEncryptionKey, nameof(proofEncryptionKey));
+            writer.WriteStartElement(serializationContext.TrustConstants.Prefix, WsTrustElements.RequestedProofToken, serializationContext.TrustConstants.Namespace);
+
+            writer.WriteEndElement();
+        }
 
         public void WriteRequest(XmlDictionaryWriter writer, WsTrustVersion wsTrustVersion, WsTrustRequest trustRequest)
         {
@@ -717,6 +724,9 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
 
             if (trustRequest.PolicyReference != null)
                 _wsPolicySerializer.WritePolicyReference(writer, serializationContext, trustRequest.PolicyReference);
+
+            if (trustRequest.ProofEncryptionKey != null)
+                WriteProofEncryptionKey(writer, serializationContext, trustRequest.ProofEncryptionKey);
 
             if (trustRequest.UseKey != null)
                 WriteUseKey(writer, serializationContext, trustRequest.UseKey);

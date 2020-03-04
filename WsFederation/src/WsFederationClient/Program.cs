@@ -28,12 +28,14 @@
 using System;
 using System.Net;
 using System.Net.Security;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.ServiceModel;
 using System.ServiceModel.Description;
 using System.ServiceModel.Federation;
 using System.ServiceModel.Security;
 using Microsoft.IdentityModel.Protocols.WsTrust;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Tokens.Saml2;
 
 #pragma warning disable CS3003 // Binding, EndpointAddress not CLS-compliant
@@ -58,7 +60,7 @@ namespace WsFederationClient
                 {
                     IssuerAddress = new EndpointAddress(new Uri(_authority)),
                     IssuerBinding = new WSHttpBinding(SecurityMode.Transport),
-                    KeyType = WsTrustKeyTypes.Trust13.Bearer,
+                    SecurityKey = new SymmetricSecurityKey(Guid.NewGuid().ToByteArray()),
                     Target = _target,
                     TokenType = Saml2Constants.OasisWssSaml2TokenProfile11
                 });
@@ -75,6 +77,8 @@ namespace WsFederationClient
             {
                 CertificateValidationMode = System.ServiceModel.Security.X509CertificateValidationMode.None
             };
+
+            //var channel1 = federationBinding.BuildChannelFactory<IRequestReply>(federationBinding.new System.ServiceModel.Channels.BindingParameterCollection());
 
             // Create the channel.
             var channel = factory.CreateChannel();

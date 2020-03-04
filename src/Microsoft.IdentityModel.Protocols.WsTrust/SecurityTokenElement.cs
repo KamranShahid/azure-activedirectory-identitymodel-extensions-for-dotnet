@@ -31,7 +31,7 @@ using static Microsoft.IdentityModel.Logging.LogHelper;
 
 #pragma warning disable 1591
 
-namespace Microsoft.IdentityModel.Xml
+namespace Microsoft.IdentityModel.Protocols.WsTrust
 {
     public class SecurityTokenElement
     {

@@ -25,7 +25,10 @@
 //
 //------------------------------------------------------------------------------
 
+using System.IO;
+using System.Text;
 using System.Xml;
+using Microsoft.IdentityModel.Protocols.WsTrust;
 using Microsoft.IdentityModel.Protocols.WsUtility;
 using Microsoft.IdentityModel.Xml;
 
@@ -41,6 +44,25 @@ namespace Microsoft.IdentityModel.Protocols.WsSecurity
         public WsSecuritySerializer()
         {
             //  if this clas becomes public, we will need to check parameters on public methods
+        }
+
+        public static XmlElement GetXmlElement (SecurityTokenReference securityTokenReference, WsTrustVersion wsTrustVersion)
+        {
+            using (var stream = new MemoryStream())
+            {
+                var writer = XmlDictionaryWriter.CreateTextWriter(stream, Encoding.UTF8, false);
+                var serializer = new WsSecuritySerializer();
+                serializer.WriteSecurityTokenReference(writer, new WsSerializationContext(wsTrustVersion), securityTokenReference);
+                writer.Flush();
+                stream.Seek(0, SeekOrigin.Begin);
+                var dom = new XmlDocument
+                {
+                    PreserveWhitespace = true
+                };
+                dom.Load(new XmlTextReader(stream) { DtdProcessing = DtdProcessing.Prohibit });
+
+                return dom.DocumentElement;
+            }
         }
 
         public SecurityTokenReference ReadSecurityTokenReference(XmlDictionaryReader reader, WsSerializationContext serializationContext)
@@ -136,7 +158,7 @@ namespace Microsoft.IdentityModel.Protocols.WsSecurity
             writer.WriteStartElement(serializationContext.SecurityConstants.Prefix, WsSecurityElements.SecurityTokenReference, serializationContext.SecurityConstants.Namespace);
 
             if (!string.IsNullOrEmpty(securityTokenReference.TokenType))
-                writer.WriteAttributeString(WsSecurityAttributes.TokenType, securityTokenReference.TokenType);
+                writer.WriteAttributeString(WsSecurityAttributes.TokenType, WsSecurity11Constants.WsSecurity11.Namespace, securityTokenReference.TokenType);
 
             if (!string.IsNullOrEmpty(securityTokenReference.Id))
                 writer.WriteAttributeString(WsUtilityAttributes.Id, securityTokenReference.Id);

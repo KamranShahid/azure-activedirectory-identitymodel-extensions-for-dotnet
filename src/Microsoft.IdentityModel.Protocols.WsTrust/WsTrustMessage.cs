@@ -251,9 +251,9 @@ namespace Microsoft.IdentityModel.Protocols.WsTrust
         public PolicyReference PolicyReference { get; set; }
 
         /// <summary>
-        /// Gets or sets the SecurityToken to be used to encrypt the proof token.
+        /// Gets or sets the <see cref="SecurityKey" /> that will send to the STS to encrypt the proof token.
         /// </summary>
-        public SecurityTokenElement ProofEncryption { get; set; }
+        public SecurityKey ProofEncryptionKey { get; set; }
 
         /// <summary>
         /// Gets or sets the Renewing element inside the RequestSecurityToken message.

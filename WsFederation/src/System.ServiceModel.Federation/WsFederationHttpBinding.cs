@@ -6,6 +6,7 @@
 
 using System.IdentityModel.Tokens;
 using System.ServiceModel.Channels;
+using Microsoft.IdentityModel.Tokens;
 
 namespace System.ServiceModel.Federation
 {
@@ -22,11 +23,17 @@ namespace System.ServiceModel.Federation
             get;
         }
 
+        private SecurityBindingElement SecurityBindingElement { get; set; }
+
         protected override SecurityBindingElement CreateMessageSecurity()
         {
             var issuedSecurityTokenParameters = IssuedTokenParameters.CreateIssuedSecurityTokenParameters();
-            // TODO - brentsch - only BearerKey is supported
-            issuedSecurityTokenParameters.KeyType = SecurityKeyType.BearerKey;
+            issuedSecurityTokenParameters.KeyType = IssuedTokenParameters.SecurityKey is AsymmetricSecurityKey
+                                                        ? SecurityKeyType.AsymmetricKey
+                                                        : IssuedTokenParameters.SecurityKey is Microsoft.IdentityModel.Tokens.SymmetricSecurityKey
+                                                        ? SecurityKeyType.SymmetricKey
+                                                        : SecurityKeyType.BearerKey;
+
             issuedSecurityTokenParameters.RequireDerivedKeys = false;
             var result = new TransportSecurityBindingElement
             {
@@ -40,7 +47,27 @@ namespace System.ServiceModel.Federation
             else
                 result.EndpointSupportingTokenParameters.Endorsing.Add(issuedSecurityTokenParameters);
 
+            SecurityBindingElement = result;
             return result;
+        }
+
+        public override BindingElementCollection CreateBindingElements()
+        {
+            var bindingElementCollection = base.CreateBindingElements();
+            bindingElementCollection.Insert(0, new WsFederationBindingElement(IssuedTokenParameters, SecurityBindingElement));
+            return bindingElementCollection;
+        }
+
+        public override IChannelFactory<TChannel> BuildChannelFactory<TChannel>(BindingParameterCollection parameters)
+        {
+            var channelFactory = base.BuildChannelFactory<TChannel>(parameters);
+            return channelFactory;
+        }
+
+        protected override TransportBindingElement GetTransport()
+        {
+            var transportBindingElement = base.GetTransport();
+            return transportBindingElement;
         }
     }
 }
